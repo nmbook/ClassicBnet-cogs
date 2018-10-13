@@ -1628,7 +1628,7 @@ class ClassicBnetFeed(commands.Cog):
         if wc_user.is_priority():
             prod_oper = "_oper"
             s += channel_state.hl_oper_format
-        if prod == "CHAT":
+        if prod == "CHAT" or (prod == "W3XP" and wc_user.name.startswith("[B]")):
             prod_oper = "_bot"
         if not channel_state.hl_norm_format in s:
             s += channel_state.hl_norm_format
