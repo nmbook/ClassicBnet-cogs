@@ -130,7 +130,8 @@ class ClassicBnetFeed(commands.Cog):
             "W3XP":         "<:w3xp:424237662757715992>",
             "CHAT":         "\U0001f916", # robot face
 
-            "_":            "<:blank:424238165155512350>",
+            "_":            "<:bnet:423287228467380224>", # Battle.net emoji
+
     }
 
     resolve_map = {
