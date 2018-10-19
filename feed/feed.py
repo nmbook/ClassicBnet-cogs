@@ -1885,25 +1885,6 @@ class ClassicBnetFeed(commands.Cog):
         
         return val
 
-    def check_can_operate_feed():
-        """Check: First thing that's true returns True: is bot owner, has admin role on server, has admin or manage_server role on server."""
-        async def predicate(ctx):
-            is_bot_owner = await ctx.bot.is_owner(ctx.author)
-            if ctx.guild is None:
-                return is_bot_owner
-            perms = ctx.channel.permissions_for(ctx.author)
-            has_guild_perms = perms.administrator or perms.manage_guild
-            admin_role_id = await ctx.bot.db.guild(ctx.guild).admin_role()
-            admin_role = discord.utils.get(ctx.guild.roles, id=admin_role_id)
-            has_admin_role = admin_role in ctx.author.roles
-            return has_guild_perms or has_admin_role
-        return commands.check(predicate)
-
-    @commands.command()
-    @check_can_operate_feed()
-    async def test_perm(self, ctx):
-        await ctx.send("Permission granted.")
-
     @commands.command(aliases=["bnreconnect", "bnrc"])
     @checks.is_owner()
     async def botnetreconnect(self, ctx):
