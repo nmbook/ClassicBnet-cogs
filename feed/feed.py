@@ -342,7 +342,7 @@ class ClassicBnetFeed(commands.Cog):
             pass
         except Exception as ex:
             print("BotNet EXCEPTION: {}".format(ex))
-            traceback.print_exc()
+            #traceback.print_exc()
 
     async def botnet_main(self):
         """Initialize self.state and then connect to BotNet.
@@ -402,7 +402,7 @@ class ClassicBnetFeed(commands.Cog):
             except Exception as ex:
                 # main loop error (uncaught exception in packet parsing and handling...)
                 print("BotNet uncaught Exception: {}".format(ex))
-                traceback.print_exc()
+                #traceback.print_exc()
             finally:
                 if self.state.socket:
                     # main loop error
@@ -1006,7 +1006,7 @@ class ClassicBnetFeed(commands.Cog):
                     return
                 except Exception as ex:
                     print("BotNet EXCEPTION posting chat: {}".format(ex))
-                    traceback.print_exc()
+                    #traceback.print_exc()
 
     def botnet_on_userlist(self, users):
         """Event that occurs when userlist is received."""
@@ -2580,7 +2580,7 @@ class ClassicBnetFeedWebChannelUser:
                 self.text_parsed_3 = self.text_parsed_2
         except Exception as ex:
             print("BotNet EXCEPTION parsing user stats:")
-            traceback.print_exc()
+            #traceback.print_exc()
 
     def __lt__(self, other): # self < other
         if other is None:
