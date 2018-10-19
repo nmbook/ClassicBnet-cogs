@@ -740,129 +740,118 @@ class ClassicBnetFeed(commands.Cog):
         if self.state.chat_ready:
             if not channel_state is None:
                 if channel_state.do_users_pin:
-                    if channel_state.userlist_update_lock:
-                        #print("Waiting to update pin.")
-                        return
+                    async with channel_state.userlist_update_lock:
+                        # find message object if stored
+                        if channel_state.users_pin == 0:
+                            #print("Pin not set!")
+                            print("Not set reason: not in config")
+                            to_create = True
+                        else:
+                            try:
+                                post = await channel.get_message(channel_state.users_pin)
+                                if post.author.id != self.bot.user.id:
+                                    # not ours...
+                                    #print("Pin not owned!")
+                                    print("Not set reason: not owned")
+                                    to_create = True
 
-                    channel_state.userlist_update_lock = True
-
-                    # find message object if stored
-                    if channel_state.users_pin == 0:
-                        #print("Pin not set!")
-                        print("Not set reason: not in config")
-                        to_create = True
-                    else:
-                        try:
-                            post = await channel.get_message(channel_state.users_pin)
-                            if post.author.id != self.bot.user.id:
-                                # not ours...
-                                #print("Pin not owned!")
-                                print("Not set reason: not owned")
+                                to_create = False
+                            except discord.NotFound:
+                                # message was deleted
+                                #print("Pin not found!")
                                 to_create = True
+                                print("Not set reason: discord says NotFound")
+                            except discord.Forbidden:
+                                print("Pin inaccessible!")
+                                to_create = False
+                                return
+                            except Exception as ex:
+                                # named but not accessible or something
+                                print("BotNet EXCEPTION finding a stored pin ID: {}".format(ex))
+                                to_create = False
+                                return
 
-                            to_create = False
-                        except discord.NotFound:
-                            # message was deleted
-                            #print("Pin not found!")
-                            to_create = True
-                            print("Not set reason: discord says NotFound")
-                        except discord.Forbidden:
-                            print("Pin inaccessible!")
-                            to_create = False
-                            channel_state.userlist_update_lock = False
+                        # generate text for this message to be pinned
+                        if   channel_state.feed_type == "botnet":
+                            text = self.handle_botnet_userlist(channel_state.users, self.state.self_user)
+                        elif channel_state.feed_type == "bncs":
+                            text = self.handle_webchannel_bncs_userlist(channel_state, channel_state.account_relay_object, channel_state.users)
+                        else:
+                            print("BotNet WARNING: Unknown feed type userlist being pinned: {}".format(channel_state.feed_type))
                             return
-                        except Exception as ex:
-                            # named but not accessible or something
-                            print("BotNet EXCEPTION finding a stored pin ID: {}".format(ex))
-                            to_create = False
-                            channel_state.userlist_update_lock = False
-                            return
 
-                    # generate text for this message to be pinned
-                    if   channel_state.feed_type == "botnet":
-                        text = self.handle_botnet_userlist(channel_state.users, self.state.self_user)
-                    elif channel_state.feed_type == "bncs":
-                        text = self.handle_webchannel_bncs_userlist(channel_state, channel_state.account_relay_object, channel_state.users)
-                    else:
-                        print("BotNet WARNING: Unknown feed type userlist being pinned: {}".format(channel_state.feed_type))
-                        return
+                        if not to_create:
+                            # updating a pinned post
+                            #print("UPDATING EXISTING USERLIST")
+                            try:
+                                #print("{} userlist len {}".format(channel_state.account_relay, len(text)))
+                                if post.content != text:
+                                    await post.edit(content=text)
 
-                    if not to_create:
-                        # updating a pinned post
-                        #print("UPDATING EXISTING USERLIST")
-                        try:
-                            #print("{} userlist len {}".format(channel_state.account_relay, len(text)))
-                            if post.content != text:
-                                await post.edit(content=text)
+                                if not post.pinned:
+                                    # not pinned
+                                    try:
+                                        print("PIN REASON: NOT CURRENTLY PINNED")
+                                        await post.pin()
+                                    except discord.Forbidden:
+                                        # pin failed
+                                        print("Pinning forbidden!")
+                                        pass
+                                    except discord.NotFound:
+                                        # pin missing
+                                        print("Message gone!")
+                                        return
+                                    except Exception as ex:
+                                        print("BotNet EXCEPTION pinning a userlist: {}".format(ex))
+                                        return
+                            except discord.NotFound:
+                                # pin missing
+                                print("Message gone!")
+                                to_create = True
+                            except discord.Forbidden:
+                                # edit failed
+                                print("Editing forbidden!")
+                                pass
+                            except Exception as ex:
+                                print("BotNet EXCEPTION updating a userlist: {}".format(ex))
 
-                            if not post.pinned:
-                                # not pinned
-                                try:
-                                    print("PIN REASON: NOT CURRENTLY PINNED")
-                                    await post.pin()
-                                except discord.Forbidden:
-                                    # pin failed
-                                    print("Pinning forbidden!")
-                                    pass
-                                except discord.NotFound:
-                                    # pin missing
-                                    print("Message gone!")
-                                    return
-                                except Exception as ex:
-                                    print("BotNet EXCEPTION pinning a userlist: {}".format(ex))
-                                    return
-                        except discord.NotFound:
-                            # pin missing
-                            print("Message gone!")
-                            to_create = True
-                        except discord.Forbidden:
-                            # edit failed
-                            print("Editing forbidden!")
-                            pass
-                        except Exception as ex:
-                            print("BotNet EXCEPTION updating a userlist: {}".format(ex))
-                        finally:
-                            channel_state.userlist_update_lock = False
+                        # create or update the post
+                        if to_create:
+                            # creating and pinning post
+                            try:
+                                print("POSTING USERLIST")
+                                post = await channel.send(content=text)
+                            except discord.Forbidden:
+                                # write failed
+                                print("Message write forbidden!")
+                                return
+                            except discord.NotFound:
+                                # write failed
+                                print("Message write not allowed to inaccessible channel!")
+                                return
+                            except Exception as ex:
+                                print("BotNet EXCEPTION posting a userlist: {}".format(ex))
+                                return
 
-                    # create or update the post
-                    if to_create:
-                        # creating and pinning post
-                        try:
-                            print("POSTING USERLIST")
-                            post = await channel.send(content=text)
-                        except discord.Forbidden:
-                            # write failed
-                            print("Message write forbidden!")
-                            return
-                        except discord.NotFound:
-                            # write failed
-                            print("Message write not allowed to inaccessible channel!")
-                            return
-                        except Exception as ex:
-                            print("BotNet EXCEPTION posting a userlist: {}".format(ex))
-                            return
-                        finally:
-                            channel_state.userlist_update_lock = False
+                            try:
+                                print("PIN REASON: POST CREATION")
+                                await post.pin()
+                            except discord.Forbidden:
+                                # pin failed
+                                print("Pinning forbidden!")
+                                pass
+                            except discord.NotFound:
+                                # pin missing
+                                print("Late! Message gone!")
+                                return
+                            except Exception as ex:
+                                print("BotNet EXCEPTION pinning a userlist: {}".format(ex))
 
-                        try:
-                            print("PIN REASON: POST CREATION")
-                            await post.pin()
-                        except discord.Forbidden:
-                            # pin failed
-                            print("Pinning forbidden!")
-                            pass
-                        except discord.NotFound:
-                            # pin missing
-                            print("Late! Message gone!")
-                            return
-                        except Exception as ex:
-                            print("BotNet EXCEPTION pinning a userlist: {}".format(ex))
-
-                        try:
-                            channel_state.users_pin = post.id
-                            await self.save_channel_config(channel, channel_state)
-                        except Exception as ex:
-                            print("BotNet EXCEPTION saving a userlist: {}".format(ex))
+                            try:
+                                channel_state.users_pin = post.id
+                                await self.save_channel_config(channel, channel_state)
+                            except Exception as ex:
+                                print("BotNet EXCEPTION saving a userlist: {}".format(ex))
 
     async def post_joinpart(self, channel, channel_state, user, action, *, time = None):
         """Posts a join/part alert to the given channel for the given user."""
@@ -2267,7 +2256,7 @@ class ClassicBnetFeedChannelState():
         self.users                  = []
         self.join_counter           = 0
         self.userlist_dirty         = False
-        self.userlist_update_lock   = False
+        self.userlist_update_lock   = asyncio.Lock()
         self.timezone_object        = pytz.utc
 
     def __repl__(self):
