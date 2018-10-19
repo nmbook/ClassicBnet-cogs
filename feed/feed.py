@@ -1943,15 +1943,15 @@ class ClassicBnetFeed(commands.Cog):
         coro = self.botnet_main()
         self.tasks.append(self.bot.loop.create_task(coro))
 
-    @commands.command(aliases=["bncsremfeed", "bncsunfeed"])
+    @commands.command(aliases=["bncsdelfeed", "bncsremfeed", "bncsunfeed", "remfeed", "unfeed"])
     @checks.guildowner_or_permissions(manage_guild=True)
-    async def bncsdelfeed(self, ctx, channel : discord.TextChannel):
+    async def delfeed(self, ctx, channel : discord.TextChannel):
         """Removes a feed to a Discord channel."""
         pass
 
-    @commands.command()
+    @commands.command(aliases=["bncsfeed", "f"])
     @checks.guildowner_or_permissions(manage_guild=True)
-    async def bncsfeed(self, ctx, channel : discord.TextChannel, account_name : str):
+    async def feed(self, ctx, channel : discord.TextChannel, account_name : str):
         """Creates a feed between the Discord channel and a Classic Battle.net channel."""
         if channel.guild is None or ctx.guild is None or channel.guild.id != ctx.guild.id:
             await ctx.send(content=error("That channel is not known. You must be an administrator or server owner and execute this command on the server."))
@@ -2014,9 +2014,9 @@ class ClassicBnetFeed(commands.Cog):
 
         await ctx.send(content=info("Created a Classic Battle.net channel feed from BotNet account {} to {}.".format(self.escape_text(account_name), channel.mention)))
 
-    @commands.command(aliases=["bnset", "botnetget", "bnget"])
+    @commands.command(aliases=["bnget", "botnetset", "bnset"])
     @checks.is_owner()
-    async def botnetset(self, ctx, key : str = "", *, val : str = ""):
+    async def botnetget(self, ctx, key : str = "", *, val : str = ""):
         """Gets or sets settings for the BotNet connection."""
         try:
             if len(key) == 0:
@@ -2057,16 +2057,16 @@ class ClassicBnetFeed(commands.Cog):
         except Exception as ex:
             print("BotNet EXCEPTION getting/setting global setting: {}".format(ex))
 
-    @commands.command(aliases=["bncsget"])
+    @commands.command(aliases=["bncsget", "bncsset", "s", "settings"])
     @checks.guildowner_or_permissions(manage_guild=True)
-    async def bncsset(self, ctx, channel : discord.TextChannel, key : str = "", *, val : str = ""):
+    async def setting(self, ctx, channel : discord.TextChannel, key : str = "", *, val : str = ""):
         """Gets or sets settings for the Classic Battle.net feed."""
         if channel.guild is None or ctx.guild is None or channel.guild.id != ctx.guild.id:
-            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !bncsfeed command to create a feed."))
+            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
             return
 
         if not channel.id in self.channel_states:
-            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !bncsfeed command to create a feed."))
+            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
             return
 
         try:
@@ -2143,9 +2143,9 @@ class ClassicBnetFeed(commands.Cog):
         except Exception as ex:
             print("BotNet EXCEPTION getting/setting channel setting: {}".format(ex))
 
-    @commands.command()
+    @commands.command(aliases=["bncsstatus"])
     @checks.guildowner_or_permissions(manage_guild=True)
-    async def bncsstatus(self, ctx, account_name):
+    async def status(self, ctx, account_name):
         """Returns the Battle.net feed(s) that are relaying from the provided BotNet account."""
         restricted = not self.bot.is_owner(ctx.author)
 
