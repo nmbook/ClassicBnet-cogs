@@ -2070,26 +2070,31 @@ class ClassicBnetFeed(commands.Cog):
             return
 
         try:
+            key_skip_format = False
             if len(key) == 0:
                 is_changing = False
                 key = "*"
-                header = "Current {} settings:".format(channel.mention)
+                key_skip_format = True
+                header = "Current {channel} settings:".format(channel = channel.mention)
             elif len(val) == 0:
                 is_changing = False
-                header = "Current {} settings (matching `{}`)".format(channel.mention, self.escape_code_text(key))
+                header = "Current {channel} settings (matching `{key}`)".format(channel = channel.mention, key = self.escape_code_text(key))
             else:
                 is_changing = True
-                header = "{} setting was set:".format(channel.mention)
+                header = "{channel} setting was set:".format(channel = channel.mention)
 
             if not key.lower() in ClassicBnetFeed.channel_conf:
                 if not "*" in key and not "?" in key and not "[" in key and not "]" in key:
                     key = key + "*"
                 key_matches = fnmatch.filter(ClassicBnetFeed.channel_conf.keys(), key)
+                if key_skip_format:
+                    key_matches_removed = fnmatch.filter(ClassicBnetFeed.channel_conf.keys(), "*_format")
+                    key_matches = [x for x in key_matches if not x in key_matches_removed]
                 if len(key_matches) == 0:
-                    await ctx.send(content="There is no {} setting called `{}`.".format(channel.mention, self.escape_code_text(key)))
+                    await ctx.send(content="There is no {channel} setting called `{key}`.".format(channel = channel.mention, key = self.escape_code_text(key)))
                     return
                 elif len(key_matches) > 1 and is_changing:
-                    await ctx.send(content="Multiple {} settings match `{}`.".format(channel.mention, self.escape_code_text(key)))
+                    await ctx.send(content="{n} {channel} settings match `{key}`.".format(channel = channel.mention, key = self.escape_code_text(key), n = len(key_matches)))
                     return
             else:
                 key_matches = [key.lower()]
@@ -2098,12 +2103,12 @@ class ClassicBnetFeed(commands.Cog):
                 key = key_matches[0]
                 conf_set = ClassicBnetFeed.channel_conf[key]
                 if not conf_set["user-editable"]:
-                    await ctx.send(content="You may not set the feed setting called {}.".format(self.escape_text(key)))
+                    await ctx.send(content="You may not set the feed setting called {key}.".format(key = self.escape_text(key)))
                     return
                 try:
                     val = self.parse_conf_value(ctx, val, conf_set["type"])
                 except ValueError as vex:
-                    await ctx.send(content="Value is not valid for setting called {}: `{}`".format(self.escape_text(key), self.escape_code_text(str(vex))))
+                    await ctx.send(content="Value is not valid for setting called {key}: `{value}`".format(key = self.escape_text(key), value = self.escape_code_text(str(vex))))
                     return
                 data = {key: str(val)}
                 await self.config.channel(channel).get_attr(key).set(val)
