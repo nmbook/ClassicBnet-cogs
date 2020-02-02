@@ -6,6 +6,7 @@ import asyncio
 import concurrent.futures
 import emoji
 import fnmatch
+import io
 import itertools
 import math
 import pytz
@@ -244,9 +245,11 @@ class ClassicBnetFeed(commands.Cog):
         self.tasks.append(self.bot.loop.create_task(coro))
 
 
-    def __unload(self):
+    def cog_unload(self):
         for task in self.tasks:
             task.cancel()
+    __delete__ = cog_unload
+    __unload = cog_unload
 
     async def set_discord_status(self):
         """Sets the discord status for the bot to indicate current valid feed count."""
@@ -748,7 +751,7 @@ class ClassicBnetFeed(commands.Cog):
                             to_create = True
                         else:
                             try:
-                                post = await channel.get_message(channel_state.users_pin)
+                                post = await channel.fetch_message(channel_state.users_pin)
                                 if post.author.id != self.bot.user.id:
                                     # not ours...
                                     #print("Pin not owned!")
@@ -1816,8 +1819,8 @@ class ClassicBnetFeed(commands.Cog):
                 res = "****"
             else:
                 res = repr(v)
-            s += "{k}{v}\n".format(k = k.ljust(mkl), v = res)
-        return "```\n{}```".format(s)
+            s += "{k}{v}\r\n".format(k = k.ljust(mkl), v = res)
+        return "```\r\n{}```".format(s)
 
     def escape_code_text(self, text):
         return text.replace("`", "\\`").replace("\n", "\\n")
@@ -2098,7 +2101,7 @@ class ClassicBnetFeed(commands.Cog):
                     return
             else:
                 key_matches = [key.lower()]
-        
+
             if is_changing:
                 key = key_matches[0]
                 conf_set = ClassicBnetFeed.channel_conf[key]
@@ -2147,6 +2150,83 @@ class ClassicBnetFeed(commands.Cog):
             await ctx.send(content="{}\n{}".format(header, self.print_conf_data(ctx, data)))
         except Exception as ex:
             print("BotNet EXCEPTION getting/setting channel setting: {}".format(ex))
+
+    @commands.command(aliases=["bncsgetfile", "bncssetfile", "sf", "settingsfile"])
+    @checks.guildowner_or_permissions(manage_guild=True)
+    async def settingfile(self, ctx, channel : discord.TextChannel, file : discord.File = None):
+        """Gets or sets settings for the Classic Battle.net feed from/to a file."""
+        if channel.guild is None or ctx.guild is None or channel.guild.id != ctx.guild.id:
+            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
+            return
+
+        if not channel.id in self.channel_states:
+            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
+            return
+
+        try:
+            if file is None:
+                is_changing = False
+                header = "Current {channel} settings are attached. Send it back with modifications to change your settings.".format(channel = channel.mention)
+            else:
+                is_changing = True
+                header = "{channel} settings were saved.".format(channel = channel.mention)
+            key_matches = ClassicBnetFeed.channel_conf.keys()
+
+            if is_changing:
+                await ctx.send(content="Not yet implemented.")
+                return
+                """
+                key = key_matches[0]
+                conf_set = ClassicBnetFeed.channel_conf[key]
+                if not conf_set["user-editable"]:
+                    await ctx.send(content="You may not set the feed setting called {key}.".format(key = self.escape_text(key)))
+                    return
+                try:
+                    val = self.parse_conf_value(ctx, val, conf_set["type"])
+                except ValueError as vex:
+                    await ctx.send(content="Value is not valid for setting called {key}: `{value}`".format(key = self.escape_text(key), value = self.escape_code_text(str(vex))))
+                    return
+                data = {key: str(val)}
+                await self.config.channel(channel).get_attr(key).set(val)
+                channel_state = self.channel_states[channel.id]
+                setattr(channel_state, key, val)
+                if "set-causes-reset" in conf_set and conf_set["set-causes-reset"]:
+                    # send RESET to this account, if online and account_relay_object is incorrect
+                    relay = self.botnet_get_relay_account(channel, channel_state, None, "RESET")
+                    if not relay is channel_state.account_relay_object:
+                        channel_state.account_relay_object = relay
+                        if relay:
+                            reset_str = "RESET"
+                            print("{} -> {}".format(relay.account, reset_str))
+                            to_send = [self.send_chat(reset_str, whisper_to = relay.bot_id)]
+                            await self.send_resp(to_send)
+                        else:
+                            # post userlist immediately since feed not online
+                            await self.post_userlist(channel, channel_state)
+                            channel_state.userlist_dirty = False
+                    else:
+                        # post userlist immediately since feed not online
+                        await self.post_userlist(channel, channel_state)
+                        channel_state.userlist_dirty = False
+                if "set-updates-timezone" in conf_set and conf_set["set-updates-timezone"]:
+                    try:
+                        channel_state.timezone_object = pytz.timezone(channel_state.timezone.replace(" ", "_"))
+                    except pytz.exceptions.UnknownTimeZoneError:
+                        channel_state.timezone_object = pytz.utc
+                if "set-updates-users" in conf_set and conf_set["set-updates-users"]:
+                    await self.post_userlist(channel, channel_state)
+                    channel_state.userlist_dirty = False"""
+            else:
+                data = {"feed": channel.id}
+                for key in key_matches:
+                    data[key] = await self.config.channel(channel).get_attr(key)()
+            await ctx.send(content=header, file=discord.File(
+                io.BytesIO(self.print_conf_data(ctx, data)[5:-3].encode("UTF-8")),
+                filename="{date:%Y%m%d}-{channel}.txt".format(
+                    date = datetime.utcnow(),
+                    channel = str(channel))))
+        except Exception as ex:
+            print("BotNet EXCEPTION getting/setting channel settings as file: {}".format(ex))
 
     @commands.command(aliases=["bncsstatus"])
     @checks.guildowner_or_permissions(manage_guild=True)
