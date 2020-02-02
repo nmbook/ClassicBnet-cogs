@@ -2232,7 +2232,7 @@ class ClassicBnetFeed(commands.Cog):
     @checks.guildowner_or_permissions(manage_guild=True)
     async def status(self, ctx, account_name):
         """Returns the Battle.net feed(s) that are relaying from the provided BotNet account."""
-        restricted = not self.bot.is_owner(ctx.author)
+        restricted = not await self.bot.is_owner(ctx.author)
 
         if restricted and ctx.guild is None:
             await ctx.send(error("You cannot get a feed status outside of a server."))
