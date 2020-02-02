@@ -4,6 +4,6 @@
     "short": "Bridges BotNet to Discord.",
     "tags": ["botnet", "valhallalegends", "feed", "utilities"],
     "name": "Classic Battle.net Feed",
-    "requirements": ["pytz", "emoji"],
+    "requirements": ["pytz", "emoji"]
 }
 
