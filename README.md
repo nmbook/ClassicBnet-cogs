@@ -9,7 +9,8 @@ This is meant as a stand-alone application to run under Red to feed Classic Batt
 # Credits
 
 - [Twentysix26](https://github.com/Twentysix26): Twentysix and the other developers of Red made a platform for randoms like me to add features as wanted.
-- Islanti for the Battle.net-side forwarding and hosting and maintaining of BotNet.
+- Islanti for the Battle.net-side forwarding in SphtBot.
+- Caaaaarrrrlll for hosting BotNet (botnet.bnetdocs.org).
 - BNETDocs community for the extensive documentation.
 - Valhalla Legends community for the extensive documentation and past innovations and discoveries.
 
