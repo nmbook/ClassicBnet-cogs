@@ -641,6 +641,7 @@ class ClassicBnetFeed(commands.Cog):
                     #print("send pkt 0x{:02x} len {}\n{}".format(bytes(resp)[1], len(resp), bytes(resp)))
                     await self.bot.loop.sock_sendall(self.state.socket, bytes(resp))
 
+    @commands.Cog.listener()
     async def on_message(self, message):
         """Handle on_message to send back to BotNet."""
         if message.type == discord.MessageType.pins_add and message.author.id == self.bot.user.id:
