@@ -752,19 +752,20 @@ class ClassicBnetFeed(commands.Cog):
                             to_create = True
                         else:
                             try:
-                                post = await channel.fetch_message(channel_state.users_pin)
-                                if post.author.id != self.bot.user.id:
-                                    # not ours...
-                                    #print("Pin not owned!")
-                                    print("Not set reason: not owned")
-                                    to_create = True
+                                if channel.permissions_for(channel.guild.me).read_messages:
+                                    post = await channel.fetch_message(channel_state.users_pin)
+                                    if post.author.id != self.bot.user.id:
+                                        # not ours...
+                                        #print("Pin not owned!")
+                                        print("Not set reason: not owned")
+                                        to_create = True
 
                                 to_create = False
                             except discord.NotFound:
                                 # message was deleted
                                 #print("Pin not found!")
-                                to_create = True
                                 print("Not set reason: discord says NotFound")
+                                to_create = True
                             except discord.Forbidden:
                                 print("Pin inaccessible!")
                                 to_create = False
@@ -795,8 +796,9 @@ class ClassicBnetFeed(commands.Cog):
                                 if not post.pinned:
                                     # not pinned
                                     try:
-                                        print("PIN REASON: NOT CURRENTLY PINNED")
-                                        await post.pin()
+                                        if channel.permissions_for(channel.guild.me).manage_messages:
+                                            print("PIN REASON: NOT CURRENTLY PINNED")
+                                            await post.pin()
                                     except discord.Forbidden:
                                         # pin failed
                                         print("Pinning forbidden!")
@@ -823,8 +825,11 @@ class ClassicBnetFeed(commands.Cog):
                         if to_create:
                             # creating and pinning post
                             try:
-                                print("POSTING USERLIST")
-                                post = await channel.send(content=text)
+                                if channel.permissions_for(channel.guild.me).send_messages:
+                                    print("POSTING USERLIST")
+                                    post = await channel.send(content=text)
+                                else:
+                                    return
                             except discord.Forbidden:
                                 # write failed
                                 print("Message write forbidden!")
@@ -838,8 +843,9 @@ class ClassicBnetFeed(commands.Cog):
                                 return
 
                             try:
-                                print("PIN REASON: POST CREATION")
-                                await post.pin()
+                                if channel.permissions_for(channel.guild.me).manage_messages:
+                                    print("PIN REASON: POST CREATION")
+                                    await post.pin()
                             except discord.Forbidden:
                                 # pin failed
                                 print("Pinning forbidden!")
@@ -898,11 +904,12 @@ class ClassicBnetFeed(commands.Cog):
                             return
 
                     try:
-                        await channel.send(content=self.safe_format(channel_state.post_format,
-                                ClassicBnetFeed.channel_conf["post_format"]["default"],
-                                timestamp = dt_aware,
-                                timestamp_utc = dt,
-                                post = text))
+                        if channel.permissions_for(channel.guild.me).send_messages:
+                            await channel.send(content=self.safe_format(channel_state.post_format,
+                                    ClassicBnetFeed.channel_conf["post_format"]["default"],
+                                    timestamp = dt_aware,
+                                    timestamp_utc = dt,
+                                    post = text))
                     except concurrent.futures.CancelledError as ex:
                         # module unload or other cancel -- no return here
                         pass
@@ -981,11 +988,12 @@ class ClassicBnetFeed(commands.Cog):
                     pass
 
                 try:
-                    await channel.send(content=self.safe_format(channel_state.post_format,
-                            ClassicBnetFeed.channel_conf["post_format"]["default"],
-                            timestamp = dt_aware,
-                            timestamp_utc = dt,
-                            post = text))
+                    if channel.permissions_for(channel.guild.me).send_messages:
+                        await channel.send(content=self.safe_format(channel_state.post_format,
+                                ClassicBnetFeed.channel_conf["post_format"]["default"],
+                                timestamp = dt_aware,
+                                timestamp_utc = dt,
+                                post = text))
                 except concurrent.futures.CancelledError as ex:
                     # module unload or other cancel -- no return here
                     pass
@@ -1904,7 +1912,8 @@ class ClassicBnetFeed(commands.Cog):
     async def botnetfeed(self, ctx, channel : discord.TextChannel):
         """Creates a feed between the Discord channel and the BotNet server."""
         if channel.id in self.channel_states:
-            await ctx.send(content=error("A channel feed is already present in that channel."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=error("A channel feed is already present in that channel."))
             return
 
         # set values
@@ -1938,7 +1947,8 @@ class ClassicBnetFeed(commands.Cog):
         except Exception as ex:
             print("BotNet EXCEPTION creating mirror channel: {}".format(ex))
 
-        await ctx.send(content=info("Created a channel feed to the BotNet server in {}.".format(channel.mention)))
+        if ctx.channel.permissions_for(ctx.me).send_messages:
+            await ctx.send(content=info("Created a channel feed to the BotNet server in {}.".format(channel.mention)))
 
         # reconnect BotNet to make use...
         for task in self.tasks:
@@ -1958,11 +1968,13 @@ class ClassicBnetFeed(commands.Cog):
     async def feed(self, ctx, channel : discord.TextChannel, account_name : str):
         """Creates a feed between the Discord channel and a Classic Battle.net channel."""
         if channel.guild is None or ctx.guild is None or channel.guild.id != ctx.guild.id:
-            await ctx.send(content=error("That channel is not known. You must be an administrator or server owner and execute this command on the server."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=error("That channel is not known. You must be an administrator or server owner and execute this command on the server."))
             return
 
         if channel.id in self.channel_states:
-            await ctx.send(content=error("A channel feed is already present in that channel."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=error("A channel feed is already present in that channel."))
             return
 
         # set values
@@ -2016,7 +2028,8 @@ class ClassicBnetFeed(commands.Cog):
             await self.post_userlist(channel, channel_state)
             channel_state.userlist_dirty = False
 
-        await ctx.send(content=info("Created a Classic Battle.net channel feed from BotNet account {} to {}.".format(self.escape_text(account_name), channel.mention)))
+        if ctx.channel.permissions_for(ctx.me).send_messages:
+            await ctx.send(content=info("Created a Classic Battle.net channel feed from BotNet account {} to {}.".format(self.escape_text(account_name), channel.mention)))
 
     @commands.command(aliases=["bnget", "botnetset", "bnset"])
     @checks.is_owner()
@@ -2039,10 +2052,12 @@ class ClassicBnetFeed(commands.Cog):
                     key = key + "*"
                 key_matches = fnmatch.filter(ClassicBnetFeed.global_conf.keys(), key)
                 if len(key_matches) == 0:
-                    await ctx.send(content="There is no BotNet setting called `{}`.".format(self.escape_code_text(key)))
+                    if ctx.channel.permissions_for(ctx.me).send_messages:
+                        await ctx.send(content="There is no BotNet setting called `{}`.".format(self.escape_code_text(key)))
                     return
                 elif len(key_matches) > 1 and is_changing:
-                    await ctx.send(content="Multiple BotNet settings match `{}`.".format(self.escape_code_text(key)))
+                    if ctx.channel.permissions_for(ctx.me).send_messages:
+                        await ctx.send(content="Multiple BotNet settings match `{}`.".format(self.escape_code_text(key)))
                     return
             else:
                 key_matches = [key.lower()]
@@ -2057,7 +2072,8 @@ class ClassicBnetFeed(commands.Cog):
                 data = {}
                 for key in key_matches:
                     data[key] = await self.config.get_attr(key)()
-            await ctx.send(content="{}\n{}".format(header, self.print_conf_data(ctx, data)))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content="{}\n{}".format(header, self.print_conf_data(ctx, data)))
         except Exception as ex:
             print("BotNet EXCEPTION getting/setting global setting: {}".format(ex))
 
@@ -2066,11 +2082,13 @@ class ClassicBnetFeed(commands.Cog):
     async def setting(self, ctx, channel : discord.TextChannel, key : str = "", *, val : str = ""):
         """Gets or sets settings for the Classic Battle.net feed."""
         if channel.guild is None or ctx.guild is None or channel.guild.id != ctx.guild.id:
-            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
             return
 
         if not channel.id in self.channel_states:
-            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
             return
 
         try:
@@ -2095,10 +2113,12 @@ class ClassicBnetFeed(commands.Cog):
                     key_matches_removed = fnmatch.filter(ClassicBnetFeed.channel_conf.keys(), "*_format")
                     key_matches = [x for x in key_matches if not x in key_matches_removed]
                 if len(key_matches) == 0:
-                    await ctx.send(content="There is no {channel} setting called `{key}`.".format(channel = channel.mention, key = self.escape_code_text(key)))
+                    if ctx.channel.permissions_for(ctx.me).send_messages:
+                        await ctx.send(content="There is no {channel} setting called `{key}`.".format(channel = channel.mention, key = self.escape_code_text(key)))
                     return
                 elif len(key_matches) > 1 and is_changing:
-                    await ctx.send(content="{n} {channel} settings match `{key}`.".format(channel = channel.mention, key = self.escape_code_text(key), n = len(key_matches)))
+                    if ctx.channel.permissions_for(ctx.me).send_messages:
+                        await ctx.send(content="{n} {channel} settings match `{key}`.".format(channel = channel.mention, key = self.escape_code_text(key), n = len(key_matches)))
                     return
             else:
                 key_matches = [key.lower()]
@@ -2107,12 +2127,14 @@ class ClassicBnetFeed(commands.Cog):
                 key = key_matches[0]
                 conf_set = ClassicBnetFeed.channel_conf[key]
                 if not conf_set["user-editable"]:
-                    await ctx.send(content="You may not set the feed setting called {key}.".format(key = self.escape_text(key)))
+                    if ctx.channel.permissions_for(ctx.me).send_messages:
+                        await ctx.send(content="You may not set the feed setting called {key}.".format(key = self.escape_text(key)))
                     return
                 try:
                     val = self.parse_conf_value(ctx, val, conf_set["type"])
                 except ValueError as vex:
-                    await ctx.send(content="Value is not valid for setting called {key}: `{value}`".format(key = self.escape_text(key), value = self.escape_code_text(str(vex))))
+                    if ctx.channel.permissions_for(ctx.me).send_messages:
+                        await ctx.send(content="Value is not valid for setting called {key}: `{value}`".format(key = self.escape_text(key), value = self.escape_code_text(str(vex))))
                     return
                 data = {key: str(val)}
                 await self.config.channel(channel).get_attr(key).set(val)
@@ -2148,7 +2170,8 @@ class ClassicBnetFeed(commands.Cog):
                 data = {}
                 for key in key_matches:
                     data[key] = await self.config.channel(channel).get_attr(key)()
-            await ctx.send(content="{}\n{}".format(header, self.print_conf_data(ctx, data)))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content="{}\n{}".format(header, self.print_conf_data(ctx, data)))
         except Exception as ex:
             print("BotNet EXCEPTION getting/setting channel setting: {}".format(ex))
 
@@ -2157,11 +2180,13 @@ class ClassicBnetFeed(commands.Cog):
     async def settingfile(self, ctx, channel : discord.TextChannel, file : discord.File = None):
         """Gets or sets settings for the Classic Battle.net feed from/to a file."""
         if channel.guild is None or ctx.guild is None or channel.guild.id != ctx.guild.id:
-            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
             return
 
         if not channel.id in self.channel_states:
-            await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=error("That channel is not known or does not have a feed. Use the !feed command to create a feed."))
             return
 
         try:
@@ -2174,7 +2199,8 @@ class ClassicBnetFeed(commands.Cog):
             key_matches = ClassicBnetFeed.channel_conf.keys()
 
             if is_changing:
-                await ctx.send(content="Not yet implemented.")
+                if ctx.channel.permissions_for(ctx.me).send_messages:
+                    await ctx.send(content="Not yet implemented.")
                 return
                 """
                 key = key_matches[0]
@@ -2221,11 +2247,12 @@ class ClassicBnetFeed(commands.Cog):
                 data = {"feed": channel.id}
                 for key in key_matches:
                     data[key] = await self.config.channel(channel).get_attr(key)()
-            await ctx.send(content=header, file=discord.File(
-                io.BytesIO(self.print_conf_data(ctx, data)[5:-3].encode("UTF-8")),
-                filename="{date:%Y%m%d}-{channel}.txt".format(
-                    date = datetime.utcnow(),
-                    channel = str(channel))))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content=header, file=discord.File(
+                        io.BytesIO(self.print_conf_data(ctx, data)[5:-3].encode("UTF-8")),
+                        filename="{date:%Y%m%d}-{channel}.txt".format(
+                            date = datetime.utcnow(),
+                            channel = str(channel))))
         except Exception as ex:
             print("BotNet EXCEPTION getting/setting channel settings as file: {}".format(ex))
 
@@ -2236,7 +2263,8 @@ class ClassicBnetFeed(commands.Cog):
         restricted = not await self.bot.is_owner(ctx.author)
 
         if restricted and ctx.guild is None:
-            await ctx.send(error("You cannot get a feed status outside of a server."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(error("You cannot get a feed status outside of a server."))
             return
 
         feeds = []
@@ -2276,14 +2304,16 @@ class ClassicBnetFeed(commands.Cog):
                     feeds.append(feed)
 
         if len(feeds) == 0:
-            await ctx.send(error("There are no feeds expecting that account."))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(error("There are no feeds expecting that account."))
         else:
             res = ""
             n = 0
             for feed in feeds:
                 res += "Feed result #{}:\n{}\n".format(n + 1, self.print_conf_data(ctx, feed))
                 n += 1
-            await ctx.send(content="{}\n\n{}".format(info("{} results.".format(n)), res))
+            if ctx.channel.permissions_for(ctx.me).send_messages:
+                await ctx.send(content="{}\n\n{}".format(info("{} results.".format(n)), res))
 
 class ClassicBnetFeedState():
     """Current state object."""
