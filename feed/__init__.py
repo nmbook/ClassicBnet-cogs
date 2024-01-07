@@ -1,5 +1,5 @@
 from .feed import ClassicBnetFeed
 
-def setup(bot):
-    bot.add_cog(ClassicBnetFeed(bot))
+async def setup(bot):
+    await bot.add_cog(ClassicBnetFeed(bot))
 
